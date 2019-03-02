@@ -7,6 +7,9 @@ import se.squeed.resilience.dojo.stations.MixStation;
 import se.squeed.resilience.dojo.stations.OvenStation;
 
 import javax.inject.Inject;
+import java.time.Duration;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 class Bakery_3 {
 
@@ -17,6 +20,8 @@ class Bakery_3 {
     private OvenStation ovenStation;
 
     private final TimeLimiter timeLimiter;
+
+    private ExecutorService executor = Executors.newFixedThreadPool(5);
 
     /**
      * Welcome to your third bakery!
@@ -32,10 +37,10 @@ class Bakery_3 {
      */
 
     private Bakery_3() {
-        timeLimiter = null;
+        timeLimiter = TimeLimiter.of(Duration.ofMillis(100));
     }
 
-    Cake bakeCake(Ingredients ingredients) {
-        return null;
+    Cake bakeCake(Ingredients ingredients) throws Exception {
+        return timeLimiter.executeFutureSupplier(() -> executor.submit(() -> ovenStation.bake(mixStation.mix(ingredients))));
     }
 }

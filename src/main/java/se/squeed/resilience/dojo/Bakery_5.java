@@ -1,6 +1,7 @@
 package se.squeed.resilience.dojo;
 
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import io.github.resilience4j.timelimiter.TimeLimiter;
 import se.squeed.resilience.dojo.products.Cake;
 import se.squeed.resilience.dojo.products.Ingredients;
@@ -8,6 +9,12 @@ import se.squeed.resilience.dojo.stations.MixStation;
 import se.squeed.resilience.dojo.stations.OvenStation;
 
 import javax.inject.Inject;
+import java.time.Duration;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.function.Supplier;
 
 class Bakery_5 {
 
@@ -21,6 +28,7 @@ class Bakery_5 {
 
     private final CircuitBreaker circuitBreaker;
 
+    private ExecutorService executor = Executors.newFixedThreadPool(5);
 
     /**
      * Welcome to your final bakery!
@@ -35,11 +43,14 @@ class Bakery_5 {
      */
 
     private Bakery_5() {
-        timeLimiter = null;
-        circuitBreaker = null;
+        timeLimiter = TimeLimiter.of(Duration.ofMillis(100));
+        circuitBreaker = CircuitBreaker.of("baker", CircuitBreakerConfig.custom().failureRateThreshold(33f).ringBufferSizeInClosedState(60).build());
     }
 
-    Cake bakeCake(Ingredients ingredients) {
-        return null;
+    Cake bakeCake(Ingredients ingredients) throws Exception {
+        Supplier<Future<Cake>> futureSupplier = () -> executor.submit(() -> ovenStation.bake(mixStation.mix(ingredients)));
+        Callable<Cake> timeLimitedCallable = TimeLimiter.decorateFutureSupplier(timeLimiter, futureSupplier);
+        Callable<Cake> circuitBreakerCallable = CircuitBreaker.decorateCallable(circuitBreaker, timeLimitedCallable);
+        return circuitBreakerCallable.call();
     }
 }

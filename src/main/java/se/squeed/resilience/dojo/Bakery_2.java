@@ -1,7 +1,9 @@
 package se.squeed.resilience.dojo;
 
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import se.squeed.resilience.dojo.products.Cake;
+import se.squeed.resilience.dojo.products.CakeMix;
 import se.squeed.resilience.dojo.products.Ingredients;
 import se.squeed.resilience.dojo.stations.MixStation;
 import se.squeed.resilience.dojo.stations.OvenStation;
@@ -30,10 +32,13 @@ class Bakery_2 {
      */
 
     private Bakery_2() {
-        circuitBreaker = null;
+        circuitBreaker = CircuitBreaker.of("baker", CircuitBreakerConfig.custom().failureRateThreshold(50f).ringBufferSizeInClosedState(40).build());
     }
 
     Cake bakeCake(Ingredients ingredients) {
-        return null;
+        return circuitBreaker.executeSupplier(() -> {
+            CakeMix mix = mixStation.mix(ingredients);
+            return ovenStation.bake(mix);
+        });
     }
 }
